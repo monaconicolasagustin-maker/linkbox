@@ -99,21 +99,21 @@ select option{background:#1a1a1a}
         <label class="field-label">URL</label>
         <div class="input-wrap">
           <input type="url" id="input-url" placeholder="Pegá el link acá…" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
-          <button class="clear-url" id="btn-clear-url" onclick="clearUrl()">×</button>
+          <button class="clear-url" id="btn-clear-url">×</button>
         </div>
       </div>
       <div>
         <label class="field-label">Categoría</label>
         <div class="cat-row">
           <div class="cat-select-wrap"><select id="input-cat"></select></div>
-          <button class="btn-add-cat" onclick="openNewCatModal()">+</button>
+          <button class="btn-add-cat" id="btn-open-newcat">+</button>
         </div>
       </div>
       <div>
         <label class="field-label">Nota <span style="opacity:.5;font-size:10px">(opcional)</span></label>
         <textarea id="input-note" placeholder="Agregar nota…" rows="3"></textarea>
       </div>
-      <button class="btn-save" onclick="saveLink()">Guardar</button>
+      <button class="btn-save" id="btn-save">Guardar</button>
     </div>
   </div>
 
@@ -121,7 +121,7 @@ select option{background:#1a1a1a}
     <div class="lib-header">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input type="text" id="search-input" placeholder="Buscar…" oninput="renderLibrary()">
+        <input type="text" id="search-input" placeholder="Buscar…">
       </div>
       <div class="filter-scroll" id="filter-chips"></div>
     </div>
@@ -135,21 +135,21 @@ select option{background:#1a1a1a}
     </div>
     <div class="settings-section">
       <div class="settings-title">Datos</div>
-      <button class="settings-btn" onclick="exportData()">
+      <button class="settings-btn" id="btn-export">
         <span class="icon">⬇️</span> Exportar links
         <span class="count-badge" id="export-count">0</span>
       </button>
-      <button class="settings-btn" onclick="document.getElementById('import-file').click()">
+      <button class="settings-btn" id="btn-import-trigger">
         <span class="icon">⬆️</span> Importar links
       </button>
-      <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+      <input type="file" id="import-file" accept=".json" style="display:none">
     </div>
   </div>
 
   <nav class="tabbar">
-    <button class="tab active" id="tab-add" onclick="switchTab('add')"><span class="tab-icon">＋</span><span>Agregar</span></button>
-    <button class="tab" id="tab-lib" onclick="switchTab('lib')"><span class="tab-icon">📚</span><span>Biblioteca</span></button>
-    <button class="tab" id="tab-settings" onclick="switchTab('settings')"><span class="tab-icon">⚙️</span><span>Ajustes</span></button>
+    <button class="tab active" data-tab="add"><span class="tab-icon">＋</span><span>Agregar</span></button>
+    <button class="tab" data-tab="lib"><span class="tab-icon">📚</span><span>Biblioteca</span></button>
+    <button class="tab" data-tab="settings"><span class="tab-icon">⚙️</span><span>Ajustes</span></button>
   </nav>
 </div>
 
@@ -158,8 +158,8 @@ select option{background:#1a1a1a}
     <h2>Nueva categoría</h2>
     <input type="text" id="newcat-input" placeholder="Ej: Nutrición, Táctica…" maxlength="40">
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('modal-newcat')">Cancelar</button>
-      <button class="btn-confirm" onclick="addCategory()">Agregar</button>
+      <button class="btn-cancel" id="btn-cancel-newcat">Cancelar</button>
+      <button class="btn-confirm" id="btn-confirm-newcat">Agregar</button>
     </div>
   </div>
 </div>
@@ -169,8 +169,8 @@ select option{background:#1a1a1a}
     <h2>¿Eliminar link?</h2>
     <p style="color:var(--text-muted);font-size:14px">Esta acción no se puede deshacer.</p>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('modal-delete')">Cancelar</button>
-      <button class="btn-confirm danger" onclick="confirmDelete()">Eliminar</button>
+      <button class="btn-cancel" id="btn-cancel-delete">Cancelar</button>
+      <button class="btn-confirm danger" id="btn-confirm-delete">Eliminar</button>
     </div>
   </div>
 </div>
@@ -188,18 +188,56 @@ let pendingDeleteId=null;
 
 function init(){
   renderCategorySelect();renderLibrary();renderCatManager();updateExportCount();
+
+  // URL clear button
   const u=document.getElementById('input-url');
   const cb=document.getElementById('btn-clear-url');
   const tog=()=>cb.classList.toggle('visible',u.value.length>0);
   u.addEventListener('input',tog);
   u.addEventListener('paste',()=>setTimeout(tog,50));
+  cb.addEventListener('click',()=>{u.value='';cb.classList.remove('visible');u.focus();});
+
+  // Save button
+  document.getElementById('btn-save').addEventListener('click',saveLink);
+
+  // Tabs
+  document.querySelectorAll('.tab').forEach(tab=>{
+    tab.addEventListener('click',()=>switchTab(tab.dataset.tab));
+  });
+
+  // New category modal
+  document.getElementById('btn-open-newcat').addEventListener('click',openNewCatModal);
+  document.getElementById('btn-confirm-newcat').addEventListener('click',addCategory);
+  document.getElementById('btn-cancel-newcat').addEventListener('click',()=>closeModal('modal-newcat'));
+
+  // Delete modal
+  document.getElementById('btn-confirm-delete').addEventListener('click',confirmDelete);
+  document.getElementById('btn-cancel-delete').addEventListener('click',()=>closeModal('modal-delete'));
+
+  // Search
+  document.getElementById('search-input').addEventListener('input',renderLibrary);
+
+  // Export/import
+  document.getElementById('btn-export').addEventListener('click',exportData);
+  document.getElementById('btn-import-trigger').addEventListener('click',()=>document.getElementById('import-file').click());
+  document.getElementById('import-file').addEventListener('change',importData);
+
+  // Modal overlay close
+  document.querySelectorAll('.modal-overlay').forEach(o=>{
+    o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+  });
+
+  // Enter on newcat
+  document.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&document.getElementById('modal-newcat').classList.contains('open'))addCategory();
+  });
 }
 
 function switchTab(tab){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('screen-'+tab).classList.add('active');
-  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
   if(tab==='lib')renderLibrary();
   if(tab==='settings'){renderCatManager();updateExportCount();}
 }
@@ -211,15 +249,23 @@ function renderCategorySelect(){
 }
 
 function renderFilterChips(){
-  document.getElementById('filter-chips').innerHTML=['Todos',...categories].map(c=>
-    `<button class="filter-chip ${activeFilter===c?'active':''}" onclick="setFilter(${JSON.stringify(c)})">${eh(c)}</button>`
+  const wrap=document.getElementById('filter-chips');
+  wrap.innerHTML=['Todos',...categories].map(c=>
+    `<button class="filter-chip ${activeFilter===c?'active':''}" data-filter="${eh(c)}">${eh(c)}</button>`
   ).join('');
+  wrap.querySelectorAll('.filter-chip').forEach(btn=>{
+    btn.addEventListener('click',()=>{activeFilter=btn.dataset.filter;renderLibrary();});
+  });
 }
 
 function renderCatManager(){
-  document.getElementById('cat-manager-list').innerHTML=categories.map((c,i)=>
-    `<div class="cat-item"><span>${eh(c)}</span><button class="cat-del" onclick="deleteCategory(${i})">×</button></div>`
+  const list=document.getElementById('cat-manager-list');
+  list.innerHTML=categories.map((c,i)=>
+    `<div class="cat-item"><span>${eh(c)}</span><button class="cat-del" data-index="${i}">×</button></div>`
   ).join('');
+  list.querySelectorAll('.cat-del').forEach(btn=>{
+    btn.addEventListener('click',()=>deleteCategory(Number(btn.dataset.index)));
+  });
 }
 
 function deleteCategory(i){
@@ -243,11 +289,6 @@ function addCategory(){
   renderCatManager();closeModal('modal-newcat');showToast('Categoría agregada ✓');
 }
 
-function clearUrl(){
-  const u=document.getElementById('input-url');
-  u.value='';document.getElementById('btn-clear-url').classList.remove('visible');u.focus();
-}
-
 function saveLink(){
   let url=document.getElementById('input-url').value.trim();
   if(!url){document.getElementById('input-url').focus();return;}
@@ -259,8 +300,6 @@ function saveLink(){
   document.getElementById('input-note').value='';
   showToast('Link guardado ✓');
 }
-
-function setFilter(cat){activeFilter=cat;renderLibrary();}
 
 function renderLibrary(){
   renderFilterChips();
@@ -280,12 +319,21 @@ function renderLibrary(){
       <div class="card-url">${eh(l.url)}</div>
       ${l.note?`<div class="card-note">${eh(l.note)}</div>`:''}
       <div class="card-actions">
-        <button class="card-btn open" onclick="openLink(${JSON.stringify(l.id)})">🔗 Abrir</button>
-        <button class="card-btn" onclick="copyLink(${JSON.stringify(l.id)})">📋 Copiar</button>
-        <button class="card-btn delete" onclick="askDelete(${JSON.stringify(l.id)})">🗑</button>
+        <button class="card-btn open" data-action="open" data-id="${eh(l.id)}">🔗 Abrir</button>
+        <button class="card-btn" data-action="copy" data-id="${eh(l.id)}">📋 Copiar</button>
+        <button class="card-btn delete" data-action="delete" data-id="${eh(l.id)}">🗑</button>
       </div>
     </div>`;
   }).join('');
+  c.querySelectorAll('.card-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      const id=btn.dataset.id;
+      const action=btn.dataset.action;
+      if(action==='open')openLink(id);
+      else if(action==='copy')copyLink(id);
+      else if(action==='delete')askDelete(id);
+    });
+  });
 }
 
 function openLink(id){const l=links.find(x=>x.id===id);if(l)window.open(l.url,'_blank');}
@@ -322,8 +370,6 @@ function importData(e){
 
 function openModal(id){document.getElementById(id).classList.add('open');}
 function closeModal(id){document.getElementById(id).classList.remove('open');}
-document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.getElementById('modal-newcat').classList.contains('open'))addCategory();});
 
 let tt;
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2000);}
